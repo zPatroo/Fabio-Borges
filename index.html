@@ -1061,6 +1061,9 @@
   .test-role { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
 
   .test-ctrls { display: flex; gap: 10px; margin-top: 30px; }
+  .test-dots { display: none; justify-content: center; gap: 8px; margin-top: 18px; }
+  .test-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); transition: background .25s ease, transform .25s ease; flex: none; }
+  .test-dots span.active { background: var(--accent-bright); transform: scale(1.4); }
   .test-ctrls button {
     width: 46px; height: 46px; border-radius: 50%;
     border: 1px solid var(--line-2);
@@ -1307,6 +1310,67 @@
   .reveal[data-delay="2"] { transition-delay: .16s; }
   .reveal[data-delay="3"] { transition-delay: .24s; }
   .reveal[data-delay="4"] { transition-delay: .32s; }
+
+  /* ====== MOBILE-ONLY: horizontal carousels + compact sections (<=700px) ====== */
+  @media (max-width: 700px) {
+    .services, .work-grid, .brands {
+      display: flex; flex-wrap: nowrap;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-padding-left: var(--pad);
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      margin: 0 calc(-1 * var(--pad));
+      padding: 4px var(--pad) 14px;
+      gap: 14px;
+    }
+    .services::-webkit-scrollbar, .work-grid::-webkit-scrollbar, .brands::-webkit-scrollbar { display: none; }
+    .svc, .work { flex: 0 0 84vw; scroll-snap-align: center; aspect-ratio: auto; }
+    .brand { flex: 0 0 66vw; scroll-snap-align: center; }
+    .svc { padding: 26px 22px; }
+    .work { aspect-ratio: 4/3; }
+
+    /* testimonials: smaller, tighter cards */
+    .test-card { flex: 0 0 84vw; padding: 24px 20px; gap: 14px; }
+    .test-quote { font-size: 15.5px; line-height: 1.42; }
+    .stars { font-size: 12px; }
+    .test-foot { padding-top: 14px; }
+    .test-av { width: 36px; height: 36px; font-size: 12px; }
+    .test-name { font-size: 13px; }
+    .test-role { font-size: 11px; }
+
+    /* CTA + brief form: more compact */
+    .cta-wrap { padding: 26px 18px; border-radius: 16px; }
+    .cta-grid { gap: 26px; }
+    .cta-grid h2 { font-size: clamp(24px, 7vw, 32px); }
+    .cta-grid p { font-size: 14px; margin-top: 12px; }
+    .scarcity { font-size: 9.5px; padding: 6px 12px; margin-bottom: 16px; }
+    form.brief { padding: 18px; gap: 8px; border-radius: 14px; }
+    form.brief .row { gap: 4px; }
+    form.brief label { font-size: 9px; }
+    form.brief input, form.brief select, form.brief textarea, .cselect-btn { padding: 11px 13px; font-size: 15px; }
+    form.brief textarea { min-height: 56px; }
+    form.brief .btn { padding: 14px 20px; font-size: 13.5px; }
+
+    /* about: smaller signature, tighter spacing */
+    .about-photo { aspect-ratio: 1/1; }
+    .about h2 { margin-bottom: 16px; }
+    .about p { font-size: 14.5px; margin-top: 12px; }
+    .signature { margin-top: 20px; font-size: 32px; }
+    .sig-sub { font-size: 9.5px; margin-top: 3px; }
+
+    /* testimonial pagination dots */
+    .test-dots { display: flex; }
+  }
+
+  /* touch devices: replace hover-pan reveals with an automatic loop so the full creative is always seen */
+  @media (hover: none) {
+    .svc-thumb img, .pan img, .work .thumb-scroll img { transition: none; animation: autoPanY 7s ease-in-out infinite; }
+    .svc-logos-inner, .brand-mini-inner { transition: none; animation: autoPanY 7s ease-in-out infinite; }
+    .svc-strip-inner { transition: none; animation: autoPanX 9s ease-in-out infinite; }
+  }
+  @keyframes autoPanY { 0%, 12% { transform: translateY(0); } 50%, 62% { transform: translateY(calc(-100% + 100cqh)); } 96%, 100% { transform: translateY(0); } }
+  @keyframes autoPanX { 0%, 12% { transform: translateX(0); } 50%, 62% { transform: translateX(calc(-100% + 100cqw)); } 96%, 100% { transform: translateX(0); } }
 
 </style>
 </head>
@@ -1867,10 +1931,9 @@
       </div>
     </div>
     </div>
+    <div class="test-dots" id="testDots"></div>
   </div>
 </section>
-
-<!-- CTA + FORM -->
 <section class="section" id="contato">
   <div class="container">
     <div class="cta-wrap reveal">
@@ -2085,6 +2148,22 @@
   const cardW = () => (track.firstElementChild?.getBoundingClientRect().width || 360) + 22;
   document.getElementById('prev').addEventListener('click', () => track.scrollBy({ left: -cardW(), behavior: 'smooth' }));
   document.getElementById('next').addEventListener('click', () => track.scrollBy({ left: cardW(), behavior: 'smooth' }));
+
+  // Testimonial pagination dots
+  const dotsWrap = document.getElementById('testDots');
+  const cards = track.querySelectorAll('.test-card');
+  cards.forEach((_, i) => { const d = document.createElement('span'); if (i === 0) d.classList.add('active'); dotsWrap.appendChild(d); });
+  const dots = dotsWrap.querySelectorAll('span');
+  let dotsTicking = false;
+  track.addEventListener('scroll', () => {
+    if (dotsTicking) return;
+    dotsTicking = true;
+    requestAnimationFrame(() => {
+      const idx = Math.round(track.scrollLeft / cardW());
+      dots.forEach((d, i) => d.classList.toggle('active', i === Math.min(idx, dots.length - 1)));
+      dotsTicking = false;
+    });
+  });
 
   // Drag-to-scroll on testimonials
   let isDragging = false, dragStartX = 0, dragStartScroll = 0, dragMoved = 0;
